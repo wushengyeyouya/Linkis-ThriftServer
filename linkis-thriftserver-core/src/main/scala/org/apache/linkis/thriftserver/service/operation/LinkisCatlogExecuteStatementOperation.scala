@@ -3,6 +3,7 @@ package org.apache.linkis.thriftserver.service.operation
 import java.util
 
 import org.apache.commons.lang3.StringUtils
+import org.apache.hadoop.hive.serde2.thrift.Type
 import org.apache.hive.service.cli._
 import org.apache.hive.service.cli.operation.ExecuteStatementOperation
 import org.apache.hive.service.cli.session.HiveSession
@@ -28,7 +29,9 @@ class LinkisCatlogExecuteStatementOperation(parentSession: HiveSession,
     case CatalogType.SCHEMAS =>
       new TableSchema().addStringColumn("database_name", "Schema Name.")
     case CatalogType.TABLES =>
-      new TableSchema().addStringColumn("tab_name", "Table Name.")
+      new TableSchema().addStringColumn("database", "Database Name.")
+        .addStringColumn("tableName", "Table Name.")
+        .addPrimitiveColumn("isTemporary", Type.BOOLEAN_TYPE, "Is temporary table?")
   }
   private val rowSet: RowSet = RowSetFactory.create(schema, getProtocolVersion, false)
 
@@ -46,7 +49,7 @@ class LinkisCatlogExecuteStatementOperation(parentSession: HiveSession,
         val tables = metaDataClient.getTables(filter)
         setHasResultSet(!tables.isEmpty)
         tables.asScala.foreach { str =>
-          rowSet.addRow(Array[Object](str.get("tableName")))
+          rowSet.addRow(Array[Object](filter, str.get("tableName"), java.lang.Boolean.FALSE))
         }
     }
   }

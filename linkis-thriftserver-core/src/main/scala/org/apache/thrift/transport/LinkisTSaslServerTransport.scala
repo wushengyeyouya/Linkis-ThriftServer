@@ -49,11 +49,11 @@ class LinkisTSaslServerTransport(trans: TTransport) extends TSaslServerTransport
       throw sendAndThrowMessage(NegotiationStatus.BAD, "Unsupported mechanism type " + mechanismName)
     }
     info(s"Received mechanism name $mechanismName from a new remote client $remoteClient.")
-    setSaslServer(LinkisTSaslServerTransport.saslServer)
+    setSaslServer(LinkisTSaslServerTransport.createSASLServer)
   }
 }
 object LinkisTSaslServerTransport {
-  private val saslServer = Sasl.createSaslServer("PLAIN", AuthTypes.CUSTOM.getAuthName, "LinkisThriftServer",
+  private def createSASLServer = Sasl.createSaslServer("PLAIN", AuthTypes.CUSTOM.getAuthName, "LinkisThriftServer",
     new util.HashMap[String, String], UserManagerClient.getUserManagerClient)
   private val SEP: Byte = 0
 }
