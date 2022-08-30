@@ -10,11 +10,10 @@ import org.apache.hadoop.hive.conf.HiveConf.ConfVars
 import org.apache.hive.common.util.HiveStringUtils
 import org.apache.hive.http.HttpServer.Builder
 import org.apache.hive.http.LlapServlet
-import org.apache.hive.service.cli.CLIService
-import org.apache.hive.service.cli.thrift.{LinkisCustomThriftBinaryCLIService, LinkisThriftBinaryCLIService, ThriftHttpCLIService}
+import org.apache.hive.service.cli.thrift.{LinkisThriftBinaryCLIService, ThriftHttpCLIService}
 import org.apache.hive.service.server.HiveServer2
 import org.apache.hive.service.servlet.QueryProfileServlet
-import org.apache.linkis.common.conf.{CommonVars, Configuration}
+import org.apache.linkis.common.conf.Configuration
 import org.apache.linkis.common.utils.{Logging, Utils}
 import org.apache.linkis.thriftserver.conf.LinkisThriftServerConfiguration
 import org.apache.linkis.thriftserver.service.{LinkisCLIService, LinkisCompositeService}
@@ -28,12 +27,12 @@ import org.apache.linkis.thriftserver.utils.ReflectiveUtils
  */
 class LinkisThriftServer2 extends HiveServer2 with LinkisCompositeService with Logging {
 
-  private val binaryPort = CommonVars("linkis.thriftserver.port", 10000)
+  private val binaryPort = LinkisThriftServerConfiguration.THRIFT_PORT.getValue
   private var cliService: LinkisCLIService = _
 
   override def init(hiveConf: HiveConf): Unit = synchronized {
     hiveConf.setBoolVar(ConfVars.HIVE_SERVER2_INPLACE_PROGRESS, false)
-    hiveConf.setIntVar(ConfVars.HIVE_SERVER2_THRIFT_PORT, binaryPort.getValue)
+    hiveConf.setIntVar(ConfVars.HIVE_SERVER2_THRIFT_PORT, binaryPort)
     hiveConf.setBoolVar(ConfVars.HIVE_SERVER2_SUPPORT_DYNAMIC_SERVICE_DISCOVERY, false)
     hiveConf.setBoolVar(ConfVars.HIVE_SERVER2_TEZ_INITIALIZE_DEFAULT_SESSIONS, false)
     hiveConf.setVar(ConfVars.HIVE_EXECUTION_ENGINE, "mr")
@@ -87,7 +86,7 @@ class LinkisThriftServer2 extends HiveServer2 with LinkisCompositeService with L
       webServer.addServlet("query_page", "/query_page", classOf[QueryProfileServlet])
       ReflectiveUtils.writeSuperField(this, "webServer", webServer)
     }
-    info(s"You can access Linkis-ThriftServer with JDBC URL jdbc:hive2://$serverHost:${binaryPort.getValue}/")
+    info(s"You can access Linkis-ThriftServer with JDBC URL jdbc:hive2://$serverHost:$binaryPort/")
   }
 
 }

@@ -29,6 +29,7 @@ object LinkisThriftServerConfiguration {
 
   val METRICS_ENABLED = CommonVars("linkis.thriftserver.metrics.enabled", true)
 
+  val THRIFT_PORT = CommonVars("linkis.thriftserver.port", 10000)
   val WEBUI_PORT = CommonVars("linkis.thriftserver.webui.port", 10002)
 
   val OPERATION_LOG_ENABLED = CommonVars("linkis.thriftserver.operation.log.enabled", true)
