@@ -33,7 +33,7 @@ class LinkisSessionImpl(protocol: TProtocolVersion, username: String, hiveConf: 
   private var operationLock: Semaphore = _
   private var opHandleSet: util.Set[OperationHandle] = _
   private var operationManager: OperationManager = _
-  private var currentDB: String = _
+  private val currentDBs = new util.HashMap[String, String]()
 
   override def open(map: util.Map[String, String]): Unit = {
     this.sessionConfMap = map
@@ -142,11 +142,11 @@ class LinkisSessionImpl(protocol: TProtocolVersion, username: String, hiveConf: 
   override def renewDelegationToken(authFactory: HiveAuthFactory, tokenStr: String): Unit =
     throw new LinkisThriftServerNotSupportException("renewDelegationToken")
 
-  def setCurrentDB(currentDB: String): Unit = synchronized {
-    info(s"User $getUserName, Session $getSessionHandle switch db to $currentDB.")
-    this.currentDB = currentDB
+  def setCurrentDB(currentUser: String, currentDB: String): Unit = synchronized {
+    info(s"User $currentUser in Session $getSessionHandle switch db to $currentDB.")
+    this.currentDBs.put(currentUser, currentDB)
   }
 
-  def getCurrentDB: String = currentDB
+  def getCurrentDB(currentUser: String): String = currentDBs.get(currentUser)
 
 }

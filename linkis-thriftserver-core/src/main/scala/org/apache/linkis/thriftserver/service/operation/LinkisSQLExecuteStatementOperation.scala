@@ -3,7 +3,7 @@ package org.apache.linkis.thriftserver.service.operation
 import java.io.File
 import java.util
 
-import org.apache.commons.io.FileUtils
+import org.apache.commons.lang3.StringUtils
 import org.apache.hadoop.hive.conf.HiveConf.ConfVars
 import org.apache.hadoop.hive.metastore.api.{FieldSchema, Schema}
 import org.apache.hadoop.hive.ql.session.OperationLog
@@ -14,7 +14,9 @@ import org.apache.linkis.common.utils.{Logging, Utils}
 import org.apache.linkis.computation.client.TableResultSetIterator
 import org.apache.linkis.computation.client.interactive.{LogListener, SubmittableInteractiveJob}
 import org.apache.linkis.computation.client.utils.LabelKeyUtils
+import org.apache.linkis.thriftserver.conf.LinkisThriftServerConfiguration
 import org.apache.linkis.thriftserver.service.client.LinkisClient
+import org.apache.linkis.thriftserver.service.operation.handler.{ProxyUserUtils, Statement}
 import org.apache.linkis.thriftserver.service.session.LinkisSessionImpl
 
 import scala.collection.JavaConverters._
@@ -26,11 +28,11 @@ import scala.collection.JavaConverters._
  * @since 0.5.0
  */
 class LinkisSQLExecuteStatementOperation(parentSession: HiveSession,
-                                         statement: String,
+                                         statement: Statement,
                                          confOverlay: util.Map[String, String],
                                          runInBackground: Boolean,
                                          queryTimeout: Long)
-  extends SQLOperation(parentSession, statement, confOverlay, runInBackground, queryTimeout) with Logging {
+  extends SQLOperation(parentSession, statement.getSQL, confOverlay, runInBackground, queryTimeout) with Logging {
 
   private val linkisSessionImpl: LinkisSessionImpl = parentSession match {
     case sessionImpl: LinkisSessionImpl => sessionImpl
@@ -39,17 +41,32 @@ class LinkisSQLExecuteStatementOperation(parentSession: HiveSession,
   private var resultIterator: TableResultSetIterator = _
 
   override protected def runQuery(): Unit = {
+    val executeUser = ProxyUserUtils.getExecuteUser(parentSession, statement)
+    if(executeUser != linkisSessionImpl.getUserName) {
+      info(s"$getHandle changed executeUser from session.user: ${linkisSessionImpl.getUserName} to proxy.user: $executeUser.")
+    }
+    val jobCreator = ProxyUserUtils.getJobCreator(parentSession, statement)
     val builder = LinkisClient.getLinkisClient.newLinkisJobBuilder()
-      .addExecuteUser(linkisSessionImpl.getUserName)
+      .addExecuteUser(executeUser)
       .addLabel(LabelKeyUtils.ENGINE_TYPE_LABEL_KEY, getEngineTypeWithVersion)
-      .addLabel(LabelKeyUtils.USER_CREATOR_LABEL_KEY, linkisSessionImpl.getUserName + "-" + linkisSessionImpl.getCreator)
+      .addLabel(LabelKeyUtils.USER_CREATOR_LABEL_KEY, executeUser + "-" + jobCreator)
       .addJobContent("runType", linkisSessionImpl.getRunTypeStr)
-      .addJobContent("code", statement)
-      .addSource("sourceIpAddress", linkisSessionImpl.getIpAddress)
-      .addSource("submitService", Utils.getLocalHostname)
+      .addJobContent("code", statement.getSQL)
+      .addSource("submitIpAddress", Utils.getLocalHostname)
       .addSource("sessionId", linkisSessionImpl.getSessionHandle.getHandleIdentifier.toString)
+      .addSource("operationId", getHandle.getHandleIdentifier.toString)
     if(confOverlay != null && confOverlay.size() > 0) {
       confOverlay.asScala.foreach{ case (k, v) => builder.addVariable(k, v)}
+    } else if(statement.getProperties != null && !statement.getProperties.isEmpty) {
+      statement.getProperties.asScala.filter { case (k, v) => StringUtils.isNotBlank(k) && StringUtils.isNotBlank(v)}
+        .foreach { case (k, v) =>
+        if(k.startsWith(Statement.VARIABLE_PARAM))
+          builder.addVariable(k.substring(Statement.VARIABLE_PARAM.length), v)
+        else if(k.startsWith(Statement.STARTUP_PARAM))
+          builder.addStartupParam(k.substring(Statement.STARTUP_PARAM.length), v)
+        else if(k.startsWith(Statement.RUNTIME_PARAM))
+          builder.addRuntimeParam(k.substring(Statement.RUNTIME_PARAM.length), v)
+      }
     }
     val linkisJob = builder.build()
     linkisJob.submit()

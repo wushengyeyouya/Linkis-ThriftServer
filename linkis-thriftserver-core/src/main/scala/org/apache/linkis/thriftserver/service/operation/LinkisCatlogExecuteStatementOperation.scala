@@ -9,6 +9,7 @@ import org.apache.hive.service.cli.operation.ExecuteStatementOperation
 import org.apache.hive.service.cli.session.HiveSession
 import org.apache.linkis.thriftserver.service.client.LinkisClient
 import org.apache.linkis.thriftserver.service.operation.CatalogType.CatalogType
+import org.apache.linkis.thriftserver.service.operation.handler.{ProxyUserUtils, Statement}
 
 import scala.collection.JavaConverters._
 
@@ -19,11 +20,11 @@ import scala.collection.JavaConverters._
  * @since 0.5.0
  */
 class LinkisCatlogExecuteStatementOperation(parentSession: HiveSession,
-                                            statement: String,
+                                            statement: Statement,
                                             confOverlay: util.Map[String, String],
                                             runInBackground: Boolean,
                                             catalogType: CatalogType,
-                                            filter: String) extends ExecuteStatementOperation(parentSession, statement, confOverlay, runInBackground) with LinkisOperation {
+                                            filter: String) extends ExecuteStatementOperation(parentSession, statement.getSQL, confOverlay, runInBackground) with LinkisOperation {
 
   private val schema: TableSchema = catalogType match {
     case CatalogType.SCHEMAS =>
@@ -36,7 +37,11 @@ class LinkisCatlogExecuteStatementOperation(parentSession: HiveSession,
   private val rowSet: RowSet = RowSetFactory.create(schema, getProtocolVersion, false)
 
   override def runInternal(): Unit = runWithState {
-    val metaDataClient = LinkisClient.getLinkisClient.getMetaDataClient(parentSession.getUserName)
+    val executeUser = ProxyUserUtils.getExecuteUser(parentSession, statement)
+    if(executeUser != parentSession.getUserName) {
+      info(s"$getHandle changed executeUser from session.user: ${parentSession.getUserName} to proxy.user: $executeUser.")
+    }
+    val metaDataClient = LinkisClient.getLinkisClient.getMetaDataClient(executeUser)
     catalogType match {
       case CatalogType.SCHEMAS =>
         val filterOp: String => Boolean = str => if(StringUtils.isBlank(filter)) true else str == filter

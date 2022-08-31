@@ -3,9 +3,12 @@ package org.apache.linkis.thriftserver.service.operation
 import java.lang.reflect.Method
 import java.util
 
+import org.apache.commons.lang3.StringUtils
+import org.apache.hive.service.cli.HiveSQLException
 import org.apache.hive.service.cli.operation._
 import org.apache.hive.service.cli.session.HiveSession
 import org.apache.linkis.common.utils.Logging
+import org.apache.linkis.thriftserver.service.operation.handler.{ProxyUserUtils, Statement, StatementHandler}
 import org.apache.linkis.thriftserver.service.session.LinkisSessionImpl
 
 /**
@@ -30,30 +33,40 @@ class LinkisOperationManager extends OperationManager with Logging {
                                             confOverlay: util.Map[String, String],
                                             runAsync: Boolean,
                                             queryTimeout: Long): ExecuteStatementOperation = newAndAddOperation {
-    statement.trim.toLowerCase match {
+    val _statement = StatementHandler.getStatementHandlers.foldLeft(Statement(statement))((statement, statementHandler) => statementHandler.handle(parentSession, statement, confOverlay))
+    if(StringUtils.isNotEmpty(_statement.getErrorMsg)) {
+      warn(s"${parentSession.getSessionHandle} handle statement failed, errorMsg: ${_statement.getErrorMsg}.")
+      throw new HiveSQLException(_statement.getErrorMsg)
+    }
+    // 这里没有抽象成工厂模式，主要是考虑实际使用场景在下面已经穷举。
+    // 如果以后出现了其他使用场景，可考虑将 ExecuteStatementOperation 的创建抽象成工厂模式
+    _statement.getSQL.trim.toLowerCase match {
       case "show schemas" | "show databases" =>
-        new LinkisCatlogExecuteStatementOperation(parentSession, statement, confOverlay, runAsync, CatalogType.SCHEMAS, null)
+        new LinkisCatlogExecuteStatementOperation(parentSession, _statement, confOverlay, runAsync, CatalogType.SCHEMAS, null)
       case LinkisOperationManager.SHOW_TABLES(db) =>
-        new LinkisCatlogExecuteStatementOperation(parentSession, statement, confOverlay, runAsync, CatalogType.TABLES, db)
+        new LinkisCatlogExecuteStatementOperation(parentSession, _statement, confOverlay, runAsync, CatalogType.TABLES, db)
       case LinkisOperationManager.SHOW_SCHEMAS(db) =>
-        new LinkisCatlogExecuteStatementOperation(parentSession, statement, confOverlay, runAsync, CatalogType.SCHEMAS, db)
+        new LinkisCatlogExecuteStatementOperation(parentSession, _statement, confOverlay, runAsync, CatalogType.SCHEMAS, db)
       case "show tables" =>
         parentSession match {
           case session: LinkisSessionImpl =>
-            if(session.getCurrentDB != null)
-              new LinkisCatlogExecuteStatementOperation(parentSession, statement, confOverlay, runAsync, CatalogType.TABLES, session.getCurrentDB)
+            val executeUser = ProxyUserUtils.getExecuteUser(parentSession, _statement)
+            if(session.getCurrentDB(executeUser) != null)
+              new LinkisCatlogExecuteStatementOperation(parentSession, _statement, confOverlay, runAsync, CatalogType.TABLES, session.getCurrentDB(executeUser))
             else {
-              warn(s"Use ${session.getUserName}, Session ${session.getSessionHandle} have not used db, now submit statement 'show tables' to Linkis.")
-              new LinkisSQLExecuteStatementOperation(parentSession, statement, confOverlay, runAsync, queryTimeout)
+              warn(s"User $executeUser, Session ${session.getSessionHandle} have not used db, now submit statement 'show tables' to Linkis.")
+              new LinkisSQLExecuteStatementOperation(parentSession, _statement, confOverlay, runAsync, queryTimeout)
             }
         }
       case LinkisOperationManager.USE_DB(db) =>
         parentSession match {
-          case session: LinkisSessionImpl => session.setCurrentDB(db)
+          case session: LinkisSessionImpl =>
+            val executeUser = ProxyUserUtils.getExecuteUser(parentSession, _statement)
+            session.setCurrentDB(executeUser, db)
         }
-        new LinkisSQLExecuteStatementOperation(parentSession, statement, confOverlay, runAsync, queryTimeout)
+        new LinkisSQLExecuteStatementOperation(parentSession, _statement, confOverlay, runAsync, queryTimeout)
       case _ =>
-        new LinkisSQLExecuteStatementOperation(parentSession, statement, confOverlay, runAsync, queryTimeout)
+        new LinkisSQLExecuteStatementOperation(parentSession, _statement, confOverlay, runAsync, queryTimeout)
     }
   }
 

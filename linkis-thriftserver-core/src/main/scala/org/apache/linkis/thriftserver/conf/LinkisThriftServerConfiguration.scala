@@ -17,7 +17,7 @@ object LinkisThriftServerConfiguration {
   val AUTHENTICATION = CommonVars("linkis.thriftserver.authentication", AuthTypes.NONE.getAuthName, "only NONE, SASL, LDAP, CUSTOM are supported.")
   val ENGINE_TYPE = CommonVars("linkis.thriftserver.job.engine.type", "spark")
   val ENGINE_VERSION = CommonVars("linkis.thriftserver.job.engine.version", "2.4.3")
-  val JOB_CREATOR = CommonVars("job.creator", "Tableau") // 为了方便 JDBC URL设置 creator，这里简化该参数的key。
+  val JOB_CREATOR = CommonVars("job.creator", "ThriftServer") // 为了方便 JDBC URL设置 creator，这里简化该参数的key。
   val RUN_TYPE_LIST = CommonVars("linkis.thriftserver.runType.list", "spark->sql,hive->hql,presto->psql,trino->tsql")
   val runTypeMap = RUN_TYPE_LIST.getValue.split(",").map { one =>
     val runTypeArray = one.split("->")
