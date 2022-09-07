@@ -4,7 +4,6 @@ import java.util
 
 import org.apache.hive.service.cli.session.HiveSession
 import org.apache.linkis.common.utils.{ClassUtils, Logging}
-import org.apache.linkis.thriftserver.service.security.{LDAPUserManagerClient, UserManagerClient}
 
 /**
  *

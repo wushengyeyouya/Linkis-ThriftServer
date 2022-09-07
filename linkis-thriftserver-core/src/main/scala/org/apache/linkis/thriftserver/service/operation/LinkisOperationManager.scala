@@ -33,6 +33,7 @@ class LinkisOperationManager extends OperationManager with Logging {
                                             confOverlay: util.Map[String, String],
                                             runAsync: Boolean,
                                             queryTimeout: Long): ExecuteStatementOperation = newAndAddOperation {
+    // 在正式执行之前，先对用户提交的 SQL 进行前置处理（危险语法检查、设置 Creator 等，修改 SQL）
     val _statement = StatementHandler.getStatementHandlers.foldLeft(Statement(statement))((statement, statementHandler) => statementHandler.handle(parentSession, statement, confOverlay))
     if(StringUtils.isNotEmpty(_statement.getErrorMsg)) {
       warn(s"${parentSession.getSessionHandle} handle statement failed, errorMsg: ${_statement.getErrorMsg}.")

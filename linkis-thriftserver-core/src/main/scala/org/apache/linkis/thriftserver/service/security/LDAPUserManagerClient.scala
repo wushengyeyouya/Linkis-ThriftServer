@@ -1,6 +1,4 @@
 package org.apache.linkis.thriftserver.service.security
-import java.util
-
 import org.apache.commons.lang3.StringUtils
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.apache.hive.service.cli.HiveSQLException
