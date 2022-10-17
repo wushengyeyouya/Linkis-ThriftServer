@@ -7,7 +7,7 @@ import org.apache.hadoop.hive.serde2.thrift.Type
 import org.apache.hive.service.cli._
 import org.apache.hive.service.cli.operation.ExecuteStatementOperation
 import org.apache.hive.service.cli.session.HiveSession
-import org.apache.linkis.thriftserver.service.client.LinkisClient
+import org.apache.linkis.thriftserver.service.client.{LinkisClient, MetadataClient}
 import org.apache.linkis.thriftserver.service.operation.CatalogType.CatalogType
 import org.apache.linkis.thriftserver.service.operation.handler.{ProxyUserUtils, Statement}
 
@@ -51,11 +51,20 @@ class LinkisCatlogExecuteStatementOperation(parentSession: HiveSession,
           rowSet.addRow(Array[Object](str))
         }
       case CatalogType.TABLES =>
-        val tables = metaDataClient.getTables(filter)
-        setHasResultSet(!tables.isEmpty)
-        tables.asScala.foreach { str =>
-          rowSet.addRow(Array[Object](filter, str.get("tableName"), java.lang.Boolean.FALSE))
+        filter match {
+          case "*" | "ALL" | "all" =>
+            metaDataClient.getDBS.asScala.foreach(fetchTables(metaDataClient, _))
+          case _ =>
+            fetchTables(metaDataClient, filter)
         }
+        setHasResultSet(rowSet.numRows() > 0)
+    }
+  }
+
+  private def fetchTables(metaDataClient: MetadataClient, db: String): Unit = {
+    val tables = metaDataClient.getTables(db)
+    tables.asScala.foreach { str =>
+      rowSet.addRow(Array[Object](db, str.get("tableName"), java.lang.Boolean.FALSE))
     }
   }
 

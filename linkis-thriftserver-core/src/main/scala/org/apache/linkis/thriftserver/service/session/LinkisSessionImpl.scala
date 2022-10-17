@@ -37,6 +37,12 @@ class LinkisSessionImpl(protocol: TProtocolVersion, username: String, hiveConf: 
 
   override def open(map: util.Map[String, String]): Unit = {
     this.sessionConfMap = map
+    if(map != null) {
+      map.asScala.filter(_._1 == "use:database").foreach {
+        case (_, value) =>
+          setCurrentDB(username, value)
+      }
+    }
     setLastAccessTime()
     setLastIdleTime()
     operationLock = ReflectiveUtils.readSuperField(this, "operationLock")

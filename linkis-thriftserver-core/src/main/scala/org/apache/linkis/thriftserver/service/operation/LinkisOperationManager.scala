@@ -41,7 +41,7 @@ class LinkisOperationManager extends OperationManager with Logging {
     }
     // 这里没有抽象成工厂模式，主要是考虑实际使用场景在下面已经穷举。
     // 如果以后出现了其他使用场景，可考虑将 ExecuteStatementOperation 的创建抽象成工厂模式
-    _statement.getSQL.trim.toLowerCase match {
+    _statement.getSimpleSQL.trim.toLowerCase match {
       case "show schemas" | "show databases" =>
         new LinkisCatlogExecuteStatementOperation(parentSession, _statement, confOverlay, runAsync, CatalogType.SCHEMAS, null)
       case LinkisOperationManager.SHOW_TABLES(db) =>
