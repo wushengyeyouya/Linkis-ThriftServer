@@ -19,10 +19,10 @@ class TableauStatementHandler extends StatementHandler {
   override def handle(parentSession: HiveSession, statement: Statement, confOverlay: util.Map[String, String]): Statement = {
     if(tableauClientIpList.contains(parentSession.getIpAddress)) {
       statement.getProperties.put(LinkisThriftServerConfiguration.JOB_CREATOR.key, "TableauClient")
-      new StatementImpl(s"-- Tableau Client(${parentSession.getIpAddress})\n" + statement.getSQL, statement.getProperties, statement.getErrorMsg)
+      Statement(s"-- Tableau Client(${parentSession.getIpAddress})\n" + statement.getSQL, statement)
     } else if(tableauServerIpList.contains(parentSession.getIpAddress)) {
       statement.getProperties.put(LinkisThriftServerConfiguration.JOB_CREATOR.key, "TableauServer")
-      new StatementImpl(s"-- Tableau Server(${parentSession.getIpAddress})\n" + statement.getSQL, statement.getProperties, statement.getErrorMsg)
+      Statement(s"-- Tableau Server(${parentSession.getIpAddress})\n" + statement.getSQL, statement)
     } else statement
   }
 

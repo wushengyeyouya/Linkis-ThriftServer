@@ -60,6 +60,8 @@ object Statement {
 
   def apply(sql: String): Statement = new StatementImpl(sql, new util.HashMap[String, String], null)
 
+  def apply(newSQL: String, statement: Statement): Statement = new StatementImpl(newSQL, statement.getSimpleSQL, statement.getProperties, statement.getErrorMsg)
+
   def apply(sql: String, errorMsg: String) = new StatementImpl(sql, new util.HashMap[String, String], errorMsg)
 
   def apply(statement: Statement) = new StatementImpl(statement.getSQL, statement.getSimpleSQL, statement.getProperties, statement.getErrorMsg)
