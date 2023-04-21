@@ -17,6 +17,10 @@
             <artifactId>linkis-thriftserver-core</artifactId>
             <version>${linkis.thriftserver.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.linkis</groupId>
+            <artifactId>linkis-computation-client</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

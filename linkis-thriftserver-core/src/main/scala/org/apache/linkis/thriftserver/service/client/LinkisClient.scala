@@ -2,8 +2,6 @@ package org.apache.linkis.thriftserver.service.client
 
 import org.apache.commons.lang3.StringUtils
 import org.apache.linkis.common.utils.{ClassUtils, Logging}
-import org.apache.linkis.computation.client.LinkisJobBuilder
-import org.apache.linkis.computation.client.interactive.SubmittableInteractiveJob
 import org.apache.linkis.thriftserver.conf.LinkisThriftServerConfiguration
 
 import scala.collection.JavaConverters._
@@ -18,7 +16,7 @@ trait LinkisClient {
 
   def init(): Unit
 
-  def newLinkisJobBuilder(): LinkisJobBuilder[SubmittableInteractiveJob]
+  def newLinkisJobBuilder(): ThriftServerLinkisJobBuilder
 
   def getMetaDataClient(user: String): MetadataClient
 

@@ -4,10 +4,9 @@ import java.util.concurrent.ConcurrentHashMap
 
 import org.apache.commons.lang3.StringUtils
 import org.apache.linkis.common.utils.Logging
-import org.apache.linkis.computation.client.{LinkisJobBuilder, LinkisJobClient}
-import org.apache.linkis.computation.client.interactive.SubmittableInteractiveJob
+import org.apache.linkis.computation.client.LinkisJobBuilder
 import org.apache.linkis.thriftserver.exception.LinkisThriftServerWarnException
-import org.apache.linkis.thriftserver.service.client.{LinkisClient, MetadataClient}
+import org.apache.linkis.thriftserver.service.client.{LinkisClient, MetadataClient, ThriftServerLinkisJobBuilder}
 
 /**
  *
@@ -26,7 +25,7 @@ class RemoteLinkisClient extends LinkisClient with Logging {
     LinkisJobBuilder.setDefaultServerUrl(gatewayUrl)
   }
 
-  override def newLinkisJobBuilder(): LinkisJobBuilder[SubmittableInteractiveJob] = LinkisJobClient.interactive.builder()
+  override def newLinkisJobBuilder(): ThriftServerLinkisJobBuilder = new RemoteClientThriftServerLinkisJobBuilder
 
   override def getMetaDataClient(user: String): MetadataClient = {
     if(metadataClientMap.containsKey(user)) return metadataClientMap.get(user)

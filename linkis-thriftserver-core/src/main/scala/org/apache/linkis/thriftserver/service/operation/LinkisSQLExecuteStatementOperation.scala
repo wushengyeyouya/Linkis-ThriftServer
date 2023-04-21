@@ -11,11 +11,7 @@ import org.apache.hive.service.cli._
 import org.apache.hive.service.cli.operation.SQLOperation
 import org.apache.hive.service.cli.session.HiveSession
 import org.apache.linkis.common.utils.{Logging, Utils}
-import org.apache.linkis.computation.client.TableResultSetIterator
-import org.apache.linkis.computation.client.interactive.{LogListener, SubmittableInteractiveJob}
-import org.apache.linkis.computation.client.utils.LabelKeyUtils
-import org.apache.linkis.thriftserver.conf.LinkisThriftServerConfiguration
-import org.apache.linkis.thriftserver.service.client.LinkisClient
+import org.apache.linkis.thriftserver.service.client.{LinkisClient, LogListener, TableResultSetIterator, ThriftServerLinkisJob}
 import org.apache.linkis.thriftserver.service.operation.handler.{ProxyUserUtils, Statement}
 import org.apache.linkis.thriftserver.service.session.LinkisSessionImpl
 
@@ -37,7 +33,7 @@ class LinkisSQLExecuteStatementOperation(parentSession: HiveSession,
   private val linkisSessionImpl: LinkisSessionImpl = parentSession match {
     case sessionImpl: LinkisSessionImpl => sessionImpl
   }
-  private var linkisJob: SubmittableInteractiveJob = _
+  private var linkisJob: ThriftServerLinkisJob = _
   private var resultIterator: TableResultSetIterator = _
 
   override protected def runQuery(): Unit = {
@@ -48,8 +44,9 @@ class LinkisSQLExecuteStatementOperation(parentSession: HiveSession,
     val jobCreator = ProxyUserUtils.getJobCreator(parentSession, statement)
     val builder = LinkisClient.getLinkisClient.newLinkisJobBuilder()
       .addExecuteUser(executeUser)
-      .addLabel(LabelKeyUtils.ENGINE_TYPE_LABEL_KEY, getEngineTypeWithVersion)
-      .addLabel(LabelKeyUtils.USER_CREATOR_LABEL_KEY, executeUser + "-" + jobCreator)
+      .addSubmitUser(parentSession.getUserName)
+      .addEngineType(getEngineTypeWithVersion)
+      .addCreator(jobCreator)
       .addJobContent("runType", linkisSessionImpl.getRunTypeStr)
       .addJobContent("code", statement.getSQL)
       .addSource("submitIpAddress", Utils.getLocalHostname)
@@ -99,7 +96,7 @@ class LinkisSQLExecuteStatementOperation(parentSession: HiveSession,
 
   override protected def killJob(): Unit = if(linkisJob != null && !linkisJob.isCompleted) linkisJob.kill()
 
-  def getProgress: Double = if(linkisJob == null) 0.0 else linkisJob.getJobInfo.getProgress.toDouble
+  def getProgress: Double = if(linkisJob == null) 0.0 else linkisJob.getJobInfo.getProgress
 
   override protected def resetFetch(): Unit = {
     val resultPath = linkisJob.getResultSetIterables(0).getFsPath
@@ -184,5 +181,10 @@ class LinkisSQLExecuteStatementOperation(parentSession: HiveSession,
         super.close()
       }
     }
+  }
+
+  override def close(): Unit = {
+    linkisJob.cleanup()
+    super.close()
   }
 }
